@@ -1,0 +1,86 @@
+domain "Git2CC"
+
+msgid "missing_section"
+msgstr "Missing section"
+
+msgid "missing_field"
+msgstr "Missing field"
+
+msgid "in_section"
+msgstr "in section"
+
+msgid "file_not_exists"
+msgstr " file not exists."
+
+msgid "folder_not_exists"
+msgstr " folder not exists."
+
+msgid "command_failed"
+msgstr " has failed. Additional information follows. "
+
+msgid "creation_failed"
+msgstr " creation has failed. Additional information follows. "
+
+msgid "new_file"
+msgstr "Creating new file."
+
+msgid "not_in_CC"
+msgstr " does not exist in the ClearCase view."
+
+msgid "already_in_CC"
+msgstr " already exists in ClearCase view."
+
+msgid "already_co"
+msgstr " already checked out in ClearCase view."
+
+msgid "ci_not_co"
+msgstr "path not checked out. Impossible to do check in."
+
+msgid "co"
+msgstr "Check out"
+
+msgid "ci"
+msgstr "Check in"
+
+msgid "CC_dir_modification_comment"
+msgstr "Adds and/or deletes elements to/from dir."
+
+msgid "CC_update_failed"
+msgstr "ClearCase view could not be updated: git pull failed. "
+
+msgid "update_hook_error"
+msgstr "update hook error:"
+
+msgid "update_hook_unexpected_error"
+msgstr "update hook unexpected error:"
+
+msgid "filestatus_not_supported"
+msgstr "File status not supported"
+
+msgid "post-receive hook error:"
+msgstr "post-receive hook error:"
+
+msgid "post-receive hook unexpected error:"
+msgstr "post-receive hook unexpected error:"
+
+msgid "NOTICE"
+msgstr "NOTICE"
+
+msgid "WARNING"
+msgstr "WARNING"
+
+msgid "impossible_unco"
+msgstr " could not be unchecked out"
+
+msgid "impossible_ci"
+msgstr " could not be checked in"
+
+msgid "avoided_file"
+msgstr " avoided. This file must not have version in ClearCase."
+
+msgid "branch_sync"
+msgstr "This branch is synchronized with ClearCase: "
+
+msgid "branch_not_sync"
+msgstr "This branch is not synchronized with ClearCase: "
+
