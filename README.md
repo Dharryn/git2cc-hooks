@@ -1,80 +1,78 @@
 git2cc-hooks
 ============
-Este conjunto de hooks permite llevar cambios entre un repositorio ClearCase (en adelante CC) y uno Git de una forma fácil y sencilla. Los equipos podrán trabajar en ambos repositorios de forma simultánea y llevar los cambios de uno a otro cuando sea necesario.
+This set of hooks lets a team work with ClearCase (from this point forward CC) and Git repositories simultaneously and bring changes between them in an easy way anytime is necessary.
 
-Git actualiza los cambios en el repositorio CC en cada operación de push de una forma totalmente transparente.
+Git updates CC in every push operation in a completely transparent way for the user.
 
-Las actualizaciones de CC a Git se realizan mediante un commit seguido de un push de la forma habitual. El único requisito es que estas operaciones debe hacerlas un usuario en concreto.
+CC updates to Git are made as usual performing a commit then a push to the bare repository. There is one requirement, this operation must be performed by a special user as we will see later.
 
-## Configuración inicial
+## Initial configuration
 
-* Debemos tener una vista **snapshot** en CC asignada en el servidor. Nadie debería trabajar nunca en este directorio porque es la vista que vamos a utilizar para sincronizar los cambios.
-* Debemos tener un usuario en el servidor asignado para llevar los cambios desde CC a Git.
-* Debemos iniciar un repositorio bare en el servidor:
+* We must have a **snapshot view** in our server. Nobody should work anytime in this view because we will use it to synchronize the repository changes.
+* We must have a user in the server to bring changes from CC to Git.
+* Initialize a Git bare repository in the server:
 ```shell
 $ git init --bare
 ```
-* Iniciamos un repositorio Git en nuestra vista:
+* Initialize a Git repository in the CC snapshot view:
 ```shell
 $ git init
 ```
-* Editamos el archivo `.git/config` de nuestra vista:
+* Edit the snapshow view repository configuration:
 ```shell
-$ git config --local core.filemode true #(para que GIT interprete los cambios de permiso de los ficheros como modificaciones)
+$ git config --local core.filemode true #(so GIT could understand modifications in file permissions as changes)
 $ git remote add origin <URL_OF_BARE_GIT_REPO>
 ```
-* Hacemos el commit inicial con todo el contenido de nuestra vista CC a Git. (Este sería un buen momento para crear y añadir un fichero `.gitignore` para evitar subida de los ficheros indeseados al repositorio).
+* Make the initial commit and push to the server. This is a good moment to create and add a `.gitignore` file to avoid the commit of unnecessary files.
 ```shell
 $ git add –A
 $ git commit –m “Initial commit”
 $ git push -u origin master
 ```
-* Eliminamos la opción de que Git interprete los cambios en los permisos de los archivos como modificaciones. (Es necesario para el commit inicial, pero debe eliminarse esta opción para el correcto funcionamiento de los hooks debido a que de momento no soportan cambios en los permisos de los ficheros en la dirección Git -> CC)
+* Remove the previous Git filemode option. This is necessary for the first commit, but must be removed in this point so the hooks can work properly. The reason is that current project version doesn't support changes in file permissions.
 ```shell
 $ git config --local core.filemode false
 ```
-## Instalación de los Hooks
+## Hooks installation
 
-* Clonamos el proyecto git2cc-hooks dentro del directorio hooks de nuestro repositorio bare.
+* Clone git2cc-hooks project inside the hooks directory of the bare repository:
 ```shell
 $ cd <URL_OF_BARE_GIT_REPO>/hooks
 $ git clone git@github.com:Dharryn/git2cc-hooks.git
 ```
-
-* Aseguramos permisos de ejecución a los ficheros '''update.py''' y '''post_receive.py'''
+* Ensure execution permissions to the files **update.py** and **post_receive.py**
 ```shell
 $ cd git2cc-hooks/src
 $ chmod u+x update.py post_receive.py
 ```
-* Realizamos los siguientes enlaces en <URL_OF_BARE_GIT_REPO>/hooks:
+* Make the following links inside <URL_OF_BARE_GIT_REPO>/hooks:
 ```
 $ ln –s python/update.py update
 $ ln –s python/post_receive.py post-receive
 ```
-* Creamos una estructura de directorios para el locale:
+* Create a proper locale path structure for your language.
 ```shell
-$ mkdir -p <URL_OF_BARE_GIT_REPO>/locale/en/LC_MESSAGES
+$ mkdir -p <URL_OF_BARE_GIT_REPO>/locale/<YOUR_LANGUAGE>/LC_MESSAGES
 ```
-* Copiamos el fichero `<URL_OF_BARE_GIT_REPO>/hooks/git2cc-hooks/src/messages/<YOUR_LANGUAGE>/<YOUR_LANGUAGE.po>` en `<URL_OF_BARE_GIT_REPO>/locale/en/LC_MESSAGES`
+* Copy your language file in the previous folder: 
 ```shell
 $ cp <URL_OF_BARE_GIT_REPO>/hooks/git2cc-hooks/src/messages/<YOUR_LANGUAGE>/<YOUR_LANGUAGE.po> <URL_OF_BARE_GIT_REPO>/locale/en/LC_MESSAGES
 ```
-* Entramos en el directorio `<URL_OF_BARE_GIT_REPO>/locale/en/LC_MESSAGES` y ejecutamos el siguiente comando:
+* Enter inside `<URL_OF_BARE_GIT_REPO>/locale/en/LC_MESSAGES` and execute the following command:
 ```shell
-$ msgfmt <YOUR_LANGUAGE>.po
+$ msgfmt <YOUR_LANGUAGE>.po #This will create the file hooks.mo
 ```
-Esto creará el archivo `hooks.mo`
-* Copiamos el directorio `<URL_OF_BARE_GIT_REPO>/hooks/git2cc-hooks/src/hooks_config` y su contenido a `<URL_OF_BARE_GIT_REPO>`
+* Copy directory `<URL_OF_BARE_GIT_REPO>/hooks/git2cc-hooks/src/hooks_config` and all its contents to `<URL_OF_BARE_GIT_REPO>`
 ```shell
 $ cp -R <URL_OF_BARE_GIT_REPO>/hooks/git2cc-hooks/src/hooks_config <URL_OF_BARE_GIT_REPO>
 ```
 
-## Configuración
-* Editamos el archivo de configuración:`<URL_OF_BARE_GIT_REPO>/hooks_config/bridge.cfg`
-  * Sección `[cc_view]`
-    * *path* path a nuestra vista snapshot de CC.
-  * Sección `[cc_config]`
-    * *cleartool_path* path al ejecutable de CC. (Contiene el valor por defecto)
-    * *cc_pusher_user* usuario que va a realizar la sincronización de CC a Git.
-  * Sección `[git_config]`
-    * *sync_branches* rama o ramas que llevarán cambios desde Git a CC. (Normalmente este valor corresponderá únicamente a la rama master).
+## Configuration
+Edit the configuration file:`<URL_OF_BARE_GIT_REPO>/hooks_config/bridge.cfg`
+* Section `[cc_view]`
+  * **path** path to our CC **snapshot view.**
+* Section `[cc_config]`
+  * **cleartool_path** path to CC executable. Already contains the default value.
+  * **cc_pusher_user** user performing synchronizations from CC to Git. This user should be used for **CC -> Git** synchronizations only.
+* Section `[git_config]`
+  * **sync_branches** branch or branches (comma separated) that will bring changes from Git to CC. Usually this value will be reserved for master.
