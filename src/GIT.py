@@ -61,8 +61,8 @@ class GIT:
     def _parse_diff(self, diff):
         """
         This function parses one string with lines containing the kind of
-        modification and the path to a file during one push operation, then returns
-        a list of lists which every element is in the form:
+        modification and the path to a file during one push operation, then
+        returns a list of lists which every element is in the form:
 
             [<File status>, <Path to file>]
 
@@ -80,8 +80,8 @@ class GIT:
 
     def _set_env(self, gitpath):
         """
-        This function gets current execution environment and sets the necessary GIT
-        variables.
+        This function gets current execution environment and sets the necessary
+        GIT variables.
 
         """
 
@@ -95,7 +95,8 @@ class GIT:
     def get_commit_files(self, old_revision, new_revision):
         """
         This function executes a GIT diff between the old_revision and
-        new_revision and returns a list of lists which every element is in the form:
+        new_revision and returns a list of lists which every element is in the
+        form:
 
             [<File status>, <Path to file>]
 
@@ -235,7 +236,7 @@ class GIT:
 
     def list_deletions(self, old_revision, new_revision):
         """
-        Returns a list of files and folders deleted between the given revisions.
+        Returns a list of files and folders deleted between the given revisions
 
         """
 

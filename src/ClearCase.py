@@ -38,7 +38,7 @@ class ClearCase:
 
     def __init__(self):
         """
-        This constructor gets the current Hooks configuration and user messages.
+        This constructor gets the current Hooks configuration and user messages
 
         """
 
@@ -424,8 +424,8 @@ class ClearCase:
 
     def uncheckout_all(self):
         """
-        Cancels checkout status for every file and folder found checked out in the
-        view.
+        Cancels checkout status for every file and folder found checked out in
+        the view.
 
         """
 

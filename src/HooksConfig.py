@@ -71,8 +71,8 @@ class HooksConfig(object):
 
     def __init__(self):
         """
-        Class constructor that gets and validates the configuration and sets the
-        translation alias
+        Class constructor that gets and validates the configuration and sets
+        the translation alias
 
         """
 

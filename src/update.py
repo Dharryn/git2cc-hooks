@@ -3,8 +3,8 @@
 """
 @summary: This module synchronises a GIT repository with one associated
 ClearCase view. It must be used as an update hook in the bare repository and
-will perform all necessary operations to maintain ClearCase before the execution
-of a push operation takes effect.
+will perform all necessary operations to maintain ClearCase before the
+excecution of a push operation takes effect.
 
 """
 
@@ -61,13 +61,13 @@ def process_deletions(cc_view_path, old_revision, new_revision):
     for deletion in deletion_list:
 
         """
-        We must check dpath existence every time because it could be deleted    in
+        We must check dpath existence every time because it could be deleted in
         a previous iteration. For example:
 
         deletion_list = ["dir1", "dir1/dir2", "dir1/dir2/file"]
 
-        We could delete the list in reverse but is more efficient delete just dir1
-        folder because we do only one call to CC.
+        We could delete the list in reverse but is more efficient delete just
+        dir1 folder because we do only one call to CC.
 
         """
 
