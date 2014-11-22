@@ -199,7 +199,7 @@ class GIT:
 
         return comments
 
-    def get_commiter(self, revision):
+    def get_committer(self, revision):
         """
         Returns the push committer from the cat-file of the given revision.
 
@@ -207,32 +207,27 @@ class GIT:
 
         """
 
-        commiter = ""
+        committer = ""
 
         try:
 
-            p = subprocess.Popen(["git", "cat-file", "commit", revision],
+            p = subprocess.Popen(["git", "log", "-1", "--pretty=%cn",
+                                  revision],
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
-            cat_file, err = p.communicate()
+            committer, err = p.communicate()
 
         except:
 
-            raise GITError("git cat-file" + self._("command_failed") +
+            raise GITError("git log" + self._("command_failed") +
                           str(sys.exc_info()))
 
-        if p.returncode == 0:
+        if p.returncode != 0:
 
-            lines = cat_file.splitlines()
-
-            commiter = lines[2].split()[1]
-
-        else:
-
-            raise GITError("git cat-file" + self._("command_failed") +
+            raise GITError("git log" + self._("command_failed") +
                           str(err))
 
-        return commiter
+        return committer
 
     def list_deletions(self, old_revision, new_revision):
         """
