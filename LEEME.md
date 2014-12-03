@@ -48,8 +48,8 @@ $ chmod u+x update.py post_receive.py
 ```
 * Realizamos los siguientes enlaces en <URL_OF_BARE_GIT_REPO>/hooks:
 ```
-$ ln –s python/update.py update
-$ ln –s python/post_receive.py post-receive
+$ ln –s src/update.py update
+$ ln –s src/post_receive.py post-receive
 ```
 * Creamos la estructura de directorios para el locale correspondiente a tu idioma:
 ```shell
