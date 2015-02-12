@@ -100,7 +100,7 @@ def do_sync(old_revision, new_revision, git, config, refs):
             refs[2] is not None and
             refs[2] in config.get_sync_branches()):
 
-        committer = git.get_commiter(new_revision)
+        committer = git.get_committer(new_revision)
 
         sync = committer != config.get_cc_pusher_user()
 

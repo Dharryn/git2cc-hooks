@@ -159,7 +159,7 @@ def do_sync(old_revision, new_revision, git, cc_pusher_user):
 
     if not git.isNullRevision(old_revision) and new_revision is not None:
 
-        committer = git.get_commiter(new_revision)
+        committer = git.get_committer(new_revision)
 
         sync = committer != cc_pusher_user
 
@@ -211,7 +211,7 @@ def main():
             if sync:
 
                 # Load push info
-                committer = git.get_commiter(new_revision)
+                committer = git.get_committer(new_revision)
                 comments = git.get_comments_list(old_revision, new_revision)
                 file_status_list = git.get_commit_files(old_revision,
                                                         new_revision)
