@@ -9,17 +9,15 @@ execution of a push operation takes effect.
 """
 
 import os
-import traceback
 import sys
+import traceback
 
 from ClearCase import CCError
 from ClearCase import ClearCase
 from GIT import GIT
 from GIT import GITError
-from HooksConfig import HooksConfig
 from HooksConfig import ConfigException
-
-
+from HooksConfig import HooksConfig
 def add_file(ccpath):
     """
     Adds one file to ClearCase view.
@@ -158,7 +156,7 @@ def main():
 
     except:
         print("{0} {1}".format(_("post-receive hook unexpected error:"),
-                            sys.exc_info()))
+                               sys.exc_info()))
         sys.exit(1)
 
     if do_sync(old_revision, new_revision, git, config, refs):
@@ -184,7 +182,7 @@ def main():
 
         except:
             print("{0} {1}".format(_("post-receive hook unexpected error:"),
-                                traceback.format_exc()))
+                                   traceback.format_exc()))
             sys.exit(1)
 
 
