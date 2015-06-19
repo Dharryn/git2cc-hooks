@@ -227,7 +227,7 @@ class GIT:
             raise GITError("git log" + self._("command_failed") +
                           str(err))
 
-        return committer
+        return committer.rstrip('\r\n')
 
     def list_deletions(self, old_revision, new_revision):
         """
