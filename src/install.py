@@ -22,27 +22,36 @@ class InstallerError(Exception):
         return repr(self.value)
 
 
-def links(cwd, hookspath):
+def install_executables(cwd, hookspath):
     """
-    Creates links to the hooks scripts.
+    Enables hooks scripts execution flag and creates the necessary links.
 
     """
+
+    # Paths
+    update_file = cwd + os.sep + "update.py"
+    post_receive_file = cwd + os.sep + "post-receive.py"
 
     update_link = hookspath + os.sep + "update"
     post_receive_link = hookspath + os.sep + "post-receive"
 
+    # Execution flag
+    os.chmod(update_file, 0744)
+    os.chmod(post_receive_file, 0744)
+
+    # Links
     if not os.path.lexists(update_link):
-        os.symlink(cwd + os.sep + "update.py", update_link)
+        os.symlink(update_file, update_link)
     else:
         raise InstallerError("update link already exists.")
 
     if not os.path.lexists(post_receive_link):
-        os.symlink(cwd + os.sep + "post-receive.py", post_receive_link)
+        os.symlink(post_receive_file, post_receive_link)
     else:
         raise InstallerError("post-receive link already exists.")
 
 
-def language(cwd, gitpath):
+def install_language(cwd, gitpath):
     """
         Installs languages
 
@@ -68,23 +77,51 @@ def language(cwd, gitpath):
             p.communicate()
 
 
+def install_config(cwd, gitpath):
+    """
+        Installs configuration file
+
+    """
+
+    shutil.copytree(cwd + os.sep + "hooks_config",
+                    gitpath + os.sep + "hooks_config")
+
+
+def print_final_message(gitpath):
+
+    print("{0}".format("Hooks successfully installed."))
+    print("{0}: {1}".format(
+        "Please review your configuration file",
+        gitpath + os.sep + "hooks_config" + os.sep + "bridge.cfg"))
+
+
 def main():
 
     cwd = os.getcwd()
     pathlist = cwd.split(os.sep)
 
+    git_index = 0
+
     # Detect git repository
-    if (".git" in pathlist and
+    for x in pathlist:
+        if x.endswith(".git"):
+            git_index = pathlist.index(x)
+
+    if (git_index > 0 and
             "hooks" in pathlist and
-            pathlist.index(".git") < pathlist.index("hooks")):
+            git_index < pathlist.index("hooks")):
 
         # Get .git and hooks path
         hookspath = os.sep.join(pathlist[:pathlist.index("hooks") + 1])
-        gitpath = os.sep.join(pathlist[:pathlist.index(".git") + 1])
+        gitpath = os.sep.join(pathlist[:git_index + 1])
 
         # Install
-        links(cwd, hookspath)
-        language(cwd, gitpath)
+        install_executables(cwd, hookspath)
+        install_language(cwd, gitpath)
+        install_config(cwd, gitpath)
+
+        # End message
+        print_final_message(cwd)
     else:
         raise InstallerError("Repository not detected")
 
