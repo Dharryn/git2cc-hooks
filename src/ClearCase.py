@@ -66,9 +66,9 @@ class ClearCase:
 
             try:
                 p = subprocess.Popen([self._config.get_cleartool_path(), "ls",
-                                    "-vob_only", ccpath],
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE)
+                                      "-vob_only", ccpath],
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE)
 
                 out, err = p.communicate()
 
@@ -91,8 +91,8 @@ class ClearCase:
         result = False
 
         p = subprocess.Popen([self._config.get_cleartool_path(), "lsco",
-                            "-s", "-d", "-cvi", ccpath],
-                            stdout=subprocess.PIPE)
+                              "-s", "-d", "-cvi", ccpath],
+                             stdout=subprocess.PIPE)
         out = p.communicate()
 
         if p.returncode == 0 and out[0] != "":
@@ -126,28 +126,28 @@ class ClearCase:
         if addVersion:
 
             command = [self._config.get_cleartool_path(), "co", "-c",
-                    cc_comment, "-ver", ccpath]
+                       cc_comment, "-ver", ccpath]
         else:
 
             command = [self._config.get_cleartool_path(), "co", "-c",
-                    cc_comment, ccpath]
+                       cc_comment, ccpath]
 
         try:
             p = subprocess.Popen(command,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
             out, err = p.communicate()
 
         except:
             raise CCError(self._("co") + " " + ccpath +
-                        self._("command_failed") +
-                        str(sys.exc_info()))
+                          self._("command_failed") +
+                          str(sys.exc_info()))
 
         if p.returncode != 0:
 
             raise CCError(self._("co") + " " + ccpath +
-                        self._("command_failed") +
-                        str(err))
+                          self._("command_failed") +
+                          str(err))
 
     def uncheckout(self, ccpath):
         """
@@ -158,7 +158,7 @@ class ClearCase:
         """
 
         p = subprocess.Popen([self._config.get_cleartool_path(), "unco", "-rm",
-                            ccpath])
+                              ccpath])
         p.communicate()
 
         if p.returncode != 0:
@@ -183,23 +183,23 @@ class ClearCase:
 
         try:
             p = subprocess.Popen([self._config.get_cleartool_path(),
-                                "ci", "-nc", ccpath],
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
+                                  "ci", "-nc", ccpath],
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
 
             out, err = p.communicate()
 
         except:
 
             raise CCError(self._("ci") + " " + ccpath +
-                        self._("command_failed") +
-                        str(sys.exc_info()))
+                          self._("command_failed") +
+                          str(sys.exc_info()))
 
         if p.returncode != 0:
 
             raise CCError(self._("ci") + " " + ccpath +
-                        self._("command_failed") +
-                        str(sys.exc_info()))
+                          self._("command_failed") +
+                          str(sys.exc_info()))
 
     def create_dir(self, ccpath):
         """
@@ -233,16 +233,16 @@ class ClearCase:
 
                 # Create new directory
                 p = subprocess.Popen([self._config.get_cleartool_path(),
-                                    "mkdir", "-c", self._("new_CC_folder"),
-                                    ccpath],
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE)
+                                      "mkdir", "-c", self._("new_CC_folder"),
+                                      ccpath],
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE)
                 out, err = p.communicate()
 
             except:
 
                 raise CCError(ccpath + self._("creation_failed") +
-                        str(sys.exc_info()))
+                              str(sys.exc_info()))
 
             if p.returncode != 0:
 
@@ -298,7 +298,7 @@ class ClearCase:
 
             raise CCError(ccpath + self._("file_not_exists"))
 
-      # Preserve current keep file if it exists
+        # Preserve current keep file if it exists
         if os.path.isfile(ccpath + ".keep"):
             os.rename(ccpath + ".keep", ccpath + ".keep.old")
 
@@ -307,12 +307,12 @@ class ClearCase:
             # Checkout file folder
             self.checkout(os.path.dirname(ccpath), self._("new_file"))
 
-          # Open the file avoids anyone changes it during the check out
+            # Open the file avoids anyone changes it during the check out
             with open(ccpath) as f:
                 p = subprocess.Popen([self._config.get_cleartool_path(),
-                                    "mkelem", "-nc", "-nco", ccpath],
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE)
+                                      "mkelem", "-nc", "-nco", ccpath],
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE)
                 out, err = p.communicate()
                 f.close()
             if p.returncode == 0:
@@ -323,7 +323,7 @@ class ClearCase:
                 ci of the keep file.
                 """
                 self.checkout(ccpath + "@@/main/LATEST",
-                        self._("new_file"), True)
+                              self._("new_file"), True)
                 os.rename(ccpath + ".keep", ccpath)
                 self.checkin(ccpath)
             else:
@@ -338,7 +338,7 @@ class ClearCase:
 
         except:
             raise CCError(ccpath + self._("creation_failed") +
-                        str(sys.exc_info()))
+                          str(sys.exc_info()))
 
     def list_checkouts(self):
         """
@@ -362,18 +362,18 @@ class ClearCase:
                 try:
                     # Get all checked out children (file/folder)of current path
                     p = subprocess.Popen([self._config.get_cleartool_path(),
-                                        "lsco", "-s", "-r", "-cvi",
-                                        current_path],
-                                        stdout=subprocess.PIPE,
-                                        stderr=subprocess.PIPE)
+                                          "lsco", "-s", "-r", "-cvi",
+                                          current_path],
+                                         stdout=subprocess.PIPE,
+                                         stderr=subprocess.PIPE)
                     out, err = p.communicate()
 
                 except:
 
                     raise CCError("ct lsco -s -r -cvi " +
-                                self._config.get_view() +
-                                self._("command_failed") +
-                                str(sys.exc_info()))
+                                  self._config.get_view() +
+                                  self._("command_failed") +
+                                  str(sys.exc_info()))
 
                 if p.returncode == 0:
 
@@ -384,8 +384,8 @@ class ClearCase:
                 else:
 
                     raise CCError("ct lsco -s -r -cvi " +
-                                self._config.get_view() +
-                                self._("command_failed") + str(err))
+                                  self._config.get_view() +
+                                  self._("command_failed") + str(err))
 
         # Reverse check out list to get directories' children files and folders
         # first
@@ -410,14 +410,14 @@ class ClearCase:
             except (CCError) as e:
                 # print warning and continue executing check in
                 print("{0} {1}".format(self._("WARNING"),
-                                    co + self._("impossible_ci")))
+                                       co + self._("impossible_ci")))
                 print(e)
                 continue
 
             except:
                 # print warning and continue executing check in
                 print("{0} {1}".format(self._("WARNING"),
-                                    co + self._("impossible_ci")))
+                                       co + self._("impossible_ci")))
                 e = sys.exc_info()
                 print(e)
                 continue
@@ -440,7 +440,7 @@ class ClearCase:
             except (CCError) as e:
                 # print warning and continue executing check outs
                 print("{0} {1}".format(self._("WARNING"),
-                    co + self._("impossible_unco")))
+                                       co + self._("impossible_unco")))
                 print(e)
                 continue
 
@@ -448,15 +448,15 @@ class ClearCase:
 
                 # print warning and continue executing check outs
                 print("{0} {1}".format(self._("WARNING"),
-                    co + self._("impossible_unco")))
+                                       co + self._("impossible_unco")))
                 e = sys.exc_info()
                 print(e)
                 continue
 
             # Delete folders not versioned and empty
             if (os.path.isdir(co) and
-               not os.listdir(co) and
-               not self.is_versioned(co)):
+                    not os.listdir(co) and
+                    not self.is_versioned(co)):
                 os.rmdir(co)
 
     def remove_name(self, ccpath):
@@ -480,17 +480,17 @@ class ClearCase:
         try:
 
             p = subprocess.Popen([self._config.get_cleartool_path(),
-                                "rmname", ccpath],
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
+                                  "rmname", ccpath],
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
             out, err = p.communicate()
 
         except:
 
             raise CCError("ct rmname " + ccpath + self._("command_failed") +
-                        str(sys.exc_info()))
+                          str(sys.exc_info()))
 
         if p.returncode != 0:
 
             raise CCError("ct rmname " + ccpath + self._("command_failed") +
-                        str(err))
+                          str(err))

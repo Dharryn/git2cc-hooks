@@ -3,10 +3,10 @@
 
 """
 
-import locale
-import gettext
-import os
 import ConfigParser
+import gettext
+import locale
+import os
 
 
 class ConfigException(Exception):
@@ -49,13 +49,13 @@ class HooksConfig(object):
             user_locale = HooksConfig.get_default_locale()
 
         t = gettext.translation("Git2CC", "locale",
-                              user_locale, fallback=True)
+                                user_locale, fallback=True)
 
         if isinstance(t, gettext.NullTranslations):
 
             user_locale = HooksConfig.get_default_locale()
             t = gettext.translation("Git2CC", "locale",
-                                  user_locale, fallback=True)
+                                    user_locale, fallback=True)
 
         t.install()
 

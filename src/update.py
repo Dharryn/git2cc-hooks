@@ -9,15 +9,15 @@ excecution of a push operation takes effect.
 """
 
 import os
-import traceback
 import sys
+import traceback
 
-from ClearCase import ClearCase
 from ClearCase import CCError
+from ClearCase import ClearCase
 from GIT import GIT
 from GIT import GITError
-from HooksConfig import HooksConfig
 from HooksConfig import ConfigException
+from HooksConfig import HooksConfig
 
 
 def add_file(ccpath):
@@ -79,7 +79,7 @@ def process_deletions(cc_view_path, old_revision, new_revision):
 
 
 def process_push(committer, comments, file_status_list, old_revision,
-                new_revision):
+                 new_revision):
     """
     This procedure executes the right ClearCase operation for every file in
     the file_status_list.
@@ -129,16 +129,16 @@ def process_push(committer, comments, file_status_list, old_revision,
 
                 efile = cc_view_path + git_file[1]
                 print("{0} {1} {2}".format(_("update_hook_error"),
-                                        _("filestatus_not_supported"),
-                                        efile))
+                                           _("filestatus_not_supported"),
+                                           efile))
                 sys.exit(1)
 
         else:
 
             ignored_path = cc_view_path + git_file[1]
             print("{0} : {1} {2}".format(_("NOTICE"),
-                                    ignored_path,
-                                    _("avoided_file")))
+                                         ignored_path,
+                                         _("avoided_file")))
 
     # Deleted files require a special treatment.
     if delete_mark:
@@ -206,7 +206,7 @@ def main():
 
             git = GIT()
             sync = do_sync(old_revision, new_revision, git,
-                        config.get_cc_pusher_user())
+                           config.get_cc_pusher_user())
 
             if sync:
 
@@ -224,7 +224,7 @@ def main():
         except:
 
             print("{0} {1}".format(_("update_hook_unexpected_error"),
-                                sys.exc_info()))
+                                   sys.exc_info()))
             sys.exit(1)
 
         if sync:
@@ -232,7 +232,7 @@ def main():
             try:
 
                 process_push(committer, comments, file_status_list,
-                            old_revision, new_revision)
+                             old_revision, new_revision)
 
             except (CCError, ConfigException) as e:
 
@@ -247,7 +247,7 @@ def main():
             except:
 
                 print("{0} {1}".format(_("update_hook_unexpected_error"),
-                                    traceback.format_exc()))
+                                       traceback.format_exc()))
 
                 # Try to recover previous state
                 cc = ClearCase()

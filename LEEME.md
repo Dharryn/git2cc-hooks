@@ -33,8 +33,22 @@ $ git push -u origin master
 ```shell
 $ git config --local core.filemode false
 ```
-## Instalación de los Hooks
 
+## Instalación
+
+### Instalación automática
+* Clonamos el proyecto git2cc-hooks dentro del directorio hooks de nuestro repositorio bare.
+```shell
+$ cd <URL_OF_BARE_GIT_REPO>/hooks
+$ git clone git@github.com:Dharryn/git2cc-hooks.git
+```
+* Ejecutamos el script de instalación
+```shell
+$ cd git2cc-hooks/src
+$ ./install.py
+```
+
+### Instalación manual
 * Clonamos el proyecto git2cc-hooks dentro del directorio hooks de nuestro repositorio bare.
 ```shell
 $ cd <URL_OF_BARE_GIT_REPO>/hooks

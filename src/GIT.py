@@ -109,15 +109,15 @@ class GIT:
         try:
 
             p = subprocess.Popen(["git", "diff", old_revision, new_revision,
-                                "--name-status"],
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
+                                  "--name-status"],
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
             diff, err = p.communicate()
 
         except:
 
             raise GITError("git diff" + self._("command_failed") +
-                          str(sys.exc_info()))
+                           str(sys.exc_info()))
 
         if p.returncode == 0:
 
@@ -145,14 +145,14 @@ class GIT:
         try:
 
             p = subprocess.Popen(["git", "rev-list", revision_range],
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
             revisions, err = p.communicate()
 
         except:
 
             raise GITError("git rev-list" + self._("command_failed") +
-                          str(sys.exc_info()))
+                           str(sys.exc_info()))
 
         if p.returncode == 0:
 
@@ -166,11 +166,11 @@ class GIT:
                 try:
 
                     p1 = subprocess.Popen(["git", "cat-file", "commit",
-                                          revision],
+                                           revision],
                                           stdout=subprocess.PIPE)
                     p2 = subprocess.Popen(["sed", "1,/^$/d"], stdin=p1.stdout,
-                                        stdout=subprocess.PIPE,
-                                        stderr=subprocess.PIPE)
+                                          stdout=subprocess.PIPE,
+                                          stderr=subprocess.PIPE)
                     # Allow p1 to receive a SIGPIPE if p2 exits
                     p1.stdout.close()
                     comment, err = p2.communicate()
@@ -178,7 +178,7 @@ class GIT:
                 except:
 
                     raise GITError("git cat-file" + self._("command_failed") +
-                                str(sys.exc_info()))
+                                   str(sys.exc_info()))
 
                 if p.returncode == 0:
 
@@ -187,7 +187,7 @@ class GIT:
                 else:
 
                     raise GITError("git cat-file" + self._("command_failed") +
-                                  str(err))
+                                   str(err))
 
             # Comments are reversed in time
             comments.reverse()
@@ -195,7 +195,7 @@ class GIT:
         else:
 
             raise GITError("git rev-list" + self._("command_failed") +
-                          str(err))
+                           str(err))
 
         return comments
 
@@ -213,19 +213,19 @@ class GIT:
 
             p = subprocess.Popen(["git", "log", "-1", "--pretty=%cn",
                                   revision],
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
             committer, err = p.communicate()
 
         except:
 
             raise GITError("git log" + self._("command_failed") +
-                          str(sys.exc_info()))
+                           str(sys.exc_info()))
 
         if p.returncode != 0:
 
             raise GITError("git log" + self._("command_failed") +
-                          str(err))
+                           str(err))
 
         return committer.rstrip('\r\n')
 
@@ -240,16 +240,16 @@ class GIT:
         try:
 
             p = subprocess.Popen(["git", "diff-tree", "-t", old_revision,
-                                new_revision, "--diff-filter=D",
-                                "--name-only"],
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
+                                  new_revision, "--diff-filter=D",
+                                  "--name-only"],
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
             pathlist, err = p.communicate()
 
         except:
 
             raise GITError("git diff-tree" + self._("command_failed") +
-                          str(sys.exc_info()))
+                           str(sys.exc_info()))
 
         if p.returncode == 0:
 
@@ -258,7 +258,7 @@ class GIT:
         else:
 
             raise GITError("git cat-file" + self._("command_failed") +
-                          str(err))
+                           str(err))
 
         return deletions_list
 
@@ -275,10 +275,10 @@ class GIT:
         try:
 
             p = subprocess.Popen(["git pull"],
-                              shell=True,
-                              stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE,
-                              env=gitenv)
+                                 shell=True,
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE,
+                                 env=gitenv)
             out, err = p.communicate()
 
         except:
