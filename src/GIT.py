@@ -288,3 +288,39 @@ class GIT:
         if p.returncode != 0:
 
             raise GITError(self._("CC_update_failed") + str(err))
+
+    def last_commit_labels(self, gitpath):
+        """
+        Executes git describe command in the HEAD to return labels
+
+        Raises GITError exception when GIT command fails.
+
+        """
+
+        labels_list = []
+
+        gitenv = self._set_env(gitpath)
+
+        try:
+
+            p = subprocess.Popen(["git tag --points-at HEAD"],
+                              shell=True,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE,
+                              env=gitenv)
+            pathlist, err = p.communicate()
+
+        except:
+
+            raise GITError(self._("GIT_labels_failed") + str(sys.exc_info()))
+
+        if p.returncode == 0:
+
+            labels_list = pathlist.splitlines()
+
+        else:
+
+            raise GITError("git describe" + self._("command_failed") +
+                          str(err))
+
+        return labels_list

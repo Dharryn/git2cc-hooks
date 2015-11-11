@@ -11,6 +11,8 @@ execution of a push operation takes effect.
 import os
 import sys
 import traceback
+import logging
+import logging.handlers
 
 from ClearCase import CCError
 from ClearCase import ClearCase
@@ -18,36 +20,63 @@ from GIT import GIT
 from GIT import GITError
 from HooksConfig import ConfigException
 from HooksConfig import HooksConfig
-def add_file(ccpath):
+
+
+#LOG_FILENAME = "/tmp/" + os.path.basename(__file__).split('.')[0] + "." + str(os.getpid())  + '.log'
+LOG_FILENAME = "/tmp/Git2CC.log"
+handler = logging.handlers.RotatingFileHandler(LOG_FILENAME, maxBytes=1000000, backupCount=5)
+handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+logger.addHandler(handler)
+
+def add_file(ccpath, labels, list_co):
     """
     Adds one file to ClearCase view.
 
     """
 
     cc = ClearCase()
-    cc.create_file(ccpath)
+
+    cc.create_file(ccpath, labels, list_co)
 
 
-def modify_file(ccpath):
+def checkin_file(ccpath, labels):
     """
     Checks in one file in the ClearCase view.
 
     """
 
     cc = ClearCase()
-    cc.checkin(ccpath)
+    cc.checkin(ccpath, labels)
 
 
-def checkin_all():
+def checkin_all(cc_view_path):
     """
     Checks in every file and folder found checked out in the view.
 
     """
-
+    git = GIT()
+    labels = git.last_commit_labels(cc_view_path)
     cc = ClearCase()
-    cc.checkin_all()
+    cc.checkin_all(labels)
 
+def log_received_files_and_labels (labels, file_status_list):
+    """
+    This procedure will log using the logger package all the received files and
+    labels.
 
+    """
+    list_of_files = '\n'.join(str(p) for p in file_status_list)
+    
+    logger.debug ("Post-receive hook Received Git Files")
+    logger.debug ("====================================")
+    logger.debug ('%s', list_of_files)
+    
+    logger.debug ("Labels received to synchronise with ClearCase")
+    logger.debug ("============================================")
+    logger.debug ('%s', labels)
+    
 def process_push(cc_view_path, file_status_list):
     """
     This procedure executes the right ClearCase operation for every file in the
@@ -56,8 +85,16 @@ def process_push(cc_view_path, file_status_list):
     """
 
     # Load user messages
-    _ = HooksConfig.get_translations()
+    HooksConfig.get_translations()
 
+    git = GIT()
+    
+    labels = git.last_commit_labels(cc_view_path)
+
+    list_co = []
+    
+    log_received_files_and_labels (labels, file_status_list)
+    
     for git_file in file_status_list:
 
         if git_file[1] != ".gitignore":
@@ -69,15 +106,18 @@ def process_push(cc_view_path, file_status_list):
 
             if git_file[0] == 'A':
 
-                add_file(cc_view_path + git_file[1])
+                add_file(cc_view_path + git_file[1], labels, list_co)
 
             elif git_file[0] == 'M':
 
-                modify_file(cc_view_path + git_file[1])
+                checkin_file(cc_view_path + git_file[1], labels)
 
             # Deleted files do not need post_receive operations.
 
-
+    # Checkout dirs needed to Add files checked-in.
+    cc = ClearCase()
+    cc.checkin_list (list_co, labels)
+    
 def do_sync(old_revision, new_revision, git, config, refs):
     """
     Checks conditions to do a Clearcase sync:
@@ -131,7 +171,9 @@ def main():
     references.
 
     """
-
+    logger.debug ("START POST-RECEIVE")
+    logger.debug ("==================")
+    
     # Load user messages
     _ = HooksConfig.get_translations()
 
@@ -174,7 +216,7 @@ def main():
             process_push(cc_view_path, file_status_list)
 
             # Check in every remaining check out
-            checkin_all()
+            #checkin_all (cc_view_path)
 
         except (GITError, CCError, ConfigException) as e:
             print("{0} {1}".format(_("post-receive hook error:"), e.value))
@@ -185,6 +227,7 @@ def main():
                                    traceback.format_exc()))
             sys.exit(1)
 
+    logger.debug ("END POST-RECEIVE")
 
 if __name__ == "__main__":
 

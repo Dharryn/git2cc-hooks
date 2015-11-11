@@ -11,6 +11,9 @@ excecution of a push operation takes effect.
 import os
 import sys
 import traceback
+import logging
+import logging.handlers
+import re
 
 from ClearCase import CCError
 from ClearCase import ClearCase
@@ -19,6 +22,14 @@ from GIT import GITError
 from HooksConfig import ConfigException
 from HooksConfig import HooksConfig
 
+#LOG_FILENAME = "/tmp/" + os.path.basename(__file__).split('.')[0] + "." + str(os.getpid()) +'.log'
+LOG_FILENAME = "/tmp/Git2CC.log"
+
+handler = logging.handlers.RotatingFileHandler(LOG_FILENAME, maxBytes=1000000, backupCount=5)
+handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+logger.addHandler(handler)
 
 def add_file(ccpath):
     """
@@ -37,15 +48,25 @@ def modify_file(ccpath, committer, comments):
 
     """
 
+    cc = ClearCase()
     co_comment = committer + ".GIT push:" + os.linesep
+    make_label = False
 
     for comment in comments:
 
-        co_comment += comment + os.linesep
+        m = re.search('@[A-Z_0-9]*',comment)
+        if m is not None:
+          label = m.group(0)[1:]
+          make_label = True
+          co_comment += re.sub('@[A-Z_0-9]*',"",comment) + os.linesep
+        else:
+          co_comment += comment + os.linesep
 
-    cc = ClearCase()
+    logger.debug("making checkout: " + ccpath + " " + co_comment)
+
     cc.checkout(ccpath, co_comment)
-
+    if make_label:
+          cc.makelabel(ccpath, label)
 
 def process_deletions(cc_view_path, old_revision, new_revision):
     """
@@ -57,7 +78,8 @@ def process_deletions(cc_view_path, old_revision, new_revision):
     git = GIT()
     cc = ClearCase()
     deletion_list = git.list_deletions(old_revision, new_revision)
-
+    co_list = []
+    
     for deletion in deletion_list:
 
         """
@@ -75,8 +97,11 @@ def process_deletions(cc_view_path, old_revision, new_revision):
 
         if os.path.exists(dpath):
 
-            cc.remove_name(dpath)
+            cc.remove_name(dpath, co_list)
 
+    # Checkout dirs for delete files are check-in.
+    #
+    cc.checkin_list (co_list)
 
 def process_push(committer, comments, file_status_list, old_revision,
                  new_revision):
@@ -100,6 +125,12 @@ def process_push(committer, comments, file_status_list, old_revision,
 
     # Load user messages
     _ = HooksConfig.get_translations()
+
+    files = '\n'.join(str(p) for p in file_status_list)
+
+    logger.debug ("Files received to synchronise with ClearCase")
+    logger.debug ("============================================")
+    logger.debug ('%s', files)
 
     # Process every file
     for git_file in file_status_list:
@@ -172,6 +203,8 @@ def main():
     before GIT updates any reference.
 
     """
+    logger.debug ("START NEW PUSH/UPDATE")
+    logger.debug ("=====================")
 
     # Get args
     # hook_script = sys.argv[0]
@@ -261,6 +294,7 @@ def main():
 
             print("{0}".format(_("branch_not_sync") + refs[2]))
 
+    logger.debug ("END NEW PUSH/UPDATE")
 
 if __name__ == "__main__":
 

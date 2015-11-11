@@ -172,3 +172,15 @@ class HooksConfig(object):
             branches = [x.strip() for x in branches]
 
         return branches
+
+    def get_vobs(self):
+        """
+        Return the configured CC vobs
+
+        """
+        vobs = []
+
+        vobs = self._config.get("cc_view", "vobs").split(' ')
+
+        return vobs
+
