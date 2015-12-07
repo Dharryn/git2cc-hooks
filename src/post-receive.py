@@ -11,8 +11,7 @@ execution of a push operation takes effect.
 import os
 import sys
 import traceback
-import logging
-import logging.handlers
+import Log
 
 from ClearCase import CCError
 from ClearCase import ClearCase
@@ -21,14 +20,6 @@ from GIT import GITError
 from HooksConfig import ConfigException
 from HooksConfig import HooksConfig
 
-
-#LOG_FILENAME = "/tmp/" + os.path.basename(__file__).split('.')[0] + "." + str(os.getpid())  + '.log'
-LOG_FILENAME = "/tmp/Git2CC.log"
-handler = logging.handlers.RotatingFileHandler(LOG_FILENAME, maxBytes=1000000, backupCount=5)
-handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-logger.addHandler(handler)
 
 def add_file(ccpath, labels, list_co):
     """
@@ -63,19 +54,19 @@ def checkin_all(cc_view_path):
 
 def log_received_files_and_labels (labels, file_status_list):
     """
-    This procedure will log using the logger package all the received files and
+    This procedure will log using the log package all the received files and
     labels.
 
     """
     list_of_files = '\n'.join(str(p) for p in file_status_list)
     
-    logger.debug ("Post-receive hook Received Git Files")
-    logger.debug ("====================================")
-    logger.debug ('%s', list_of_files)
+    Log.debug ("Post-receive hook Received Git Files")
+    Log.debug ("====================================")
+    Log.debug (list_of_files)
     
-    logger.debug ("Labels received to synchronise with ClearCase")
-    logger.debug ("============================================")
-    logger.debug ('%s', labels)
+    Log.debug ("Labels received to synchronise with ClearCase")
+    Log.debug ("============================================")
+    Log.debug (labels)
     
 def process_push(cc_view_path, file_status_list):
     """
@@ -171,8 +162,8 @@ def main():
     references.
 
     """
-    logger.debug ("START POST-RECEIVE")
-    logger.debug ("==================")
+    Log.debug ("START POST-RECEIVE")
+    Log.debug ("==================")
     
     # Load user messages
     _ = HooksConfig.get_translations()
@@ -193,12 +184,14 @@ def main():
         refs = refs.split('/')
 
     except (GITError, ConfigException) as e:
-        print("{0} {1}".format(_("post-receive hook error:"), e.value))
+        Log.error("{0} {1}".format(_("post-receive hook error:"), e.value))
+        Log.error("Please review checkout files!!!!")
         sys.exit(1)
 
     except:
-        print("{0} {1}".format(_("post-receive hook unexpected error:"),
+        Log.error("{0} {1}".format(_("post-receive hook unexpected error:"),
                                sys.exc_info()))
+        Log.error("Please review checkout files!!!!")
         sys.exit(1)
 
     if do_sync(old_revision, new_revision, git, config, refs):
@@ -209,7 +202,9 @@ def main():
             cc_view_path = config.get_view() + os.sep
 
             # Update ClearCase view and recover file status list using GIT
+            Log.debug("git pull from " + cc_view_path + "...")
             git.pull(cc_view_path)
+            Log.debug("git pull from " + cc_view_path + "...OK")
             file_status_list = git.get_commit_files(old_revision, new_revision)
 
             # Process every file
@@ -219,15 +214,17 @@ def main():
             #checkin_all (cc_view_path)
 
         except (GITError, CCError, ConfigException) as e:
-            print("{0} {1}".format(_("post-receive hook error:"), e.value))
+            Log.error("{0} {1}".format(_("post-receive hook error:"), e.value))
+            Log.error("Please review checkout files!!!!")
             sys.exit(1)
 
         except:
-            print("{0} {1}".format(_("post-receive hook unexpected error:"),
-                                   traceback.format_exc()))
+            Log.error("{0} {1}".format(_("post-receive hook unexpected error:"),
+                                   traceback.format_exc(), sys.exc_info()[0]))
+            Log.error("Please review checkout files!!!!")
             sys.exit(1)
 
-    logger.debug ("END POST-RECEIVE")
+    Log.debug ("END POST-RECEIVE")
 
 if __name__ == "__main__":
 
