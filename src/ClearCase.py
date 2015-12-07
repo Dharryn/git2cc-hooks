@@ -12,9 +12,9 @@ http://docs.python.org/2/library/subprocess.html
 import os
 import subprocess
 import sys
+import Log
 
 from HooksConfig import HooksConfig
-
 
 class CCError(Exception):
 
@@ -54,24 +54,110 @@ class ClearCase:
 
             raise
 
+    def need_merge(self, ccpath):
+        """
+        Checks if the received file or folder need merge on ClearCase
+
+        """
+        Log.debug("Checks if resource needs Clearcase merge: " + ccpath)
+        
+        result = False
+        
+        if os.path.exists(ccpath):
+            
+            Log.debug("need_merge: exist_path")
+
+            try:
+                # Get the current version description
+                # Ex : path@@/main/Step2_project/rel_1.3/15
+                p = subprocess.Popen([self._config.get_cleartool_path(),
+                                      "des","-short"
+                                      ,ccpath],
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE)
+                out, err = p.communicate()
+
+                if p.returncode == 0:
+                    
+                    line=out.rstrip('\r\n')
+                    
+                    # Changes from (r)ight position of string the last number
+                    # (15) with LATEST
+                    branch=out.rpartition("/")[0]+"/LATEST"
+                    
+                    Log.debug ("need_merge: "+ ccpath + "," + line + ","+branch)
+                    
+                    p = subprocess.Popen([self._config.get_cleartool_path(),
+                                          "des","-short"
+                                          ,branch],
+                                         stdout=subprocess.PIPE,
+                                         stderr=subprocess.PIPE)
+                          
+                    out, err = p.communicate()
+                    
+                    Log.debug
+                    ("need_merge: compare:("+line+"=="+out.rstrip('\r\n')+")")
+                    
+                    result = (line != out.rstrip('\r\n'))
+
+                else:
+
+                    Log.error ("need_merge:"+ str(p.returncode) & " ".join(out))
+
+                
+            except:
+                
+                Log.error("need_merge: exception " + str(sys.exc_info()))
+                
+                result = False
+                
+        else:
+
+            Log.debug("need_merge: not_exist_path")
+
+        if result:
+            
+            Log.debug("need_merge: TRUE!!!")
+            
+        else:
+            
+            Log.debug("need_merge: false")
+            
+        return result
+
     def is_versioned(self, ccpath):
         """
         Checks if the received file or folder is under ClearCase
 
         """
 
+        Log.debug ("is_versioned:" + ccpath)
+        
         result = False
 
         if os.path.exists(ccpath):
 
             try:
-                p = subprocess.Popen([self._config.get_cleartool_path(), "ls",
-                                      "-vob_only", ccpath],
-                                     stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE)
+                if not os.path.isdir(ccpath):
 
-                out, err = p.communicate()
+                    p = subprocess.Popen([self._config.get_cleartool_path(),
+                                          "ls",
+                                          "-vob_only", ccpath],
+                                         stdout=subprocess.PIPE,
+                                         stderr=subprocess.PIPE)
 
+                    out, err = p.communicate()
+
+                else:
+
+                    p = subprocess.Popen([self._config.get_cleartool_path(),
+                                          "ls",
+                                          "-vob_only","-directory", ccpath],
+                                         stdout=subprocess.PIPE,
+                                         stderr=subprocess.PIPE)
+
+                    out, err = p.communicate()
+                    
                 if p.returncode == 0:
 
                     result = not (out is None or out == "")
@@ -80,6 +166,7 @@ class ClearCase:
 
                 result = False
 
+        Log.debug("Checks if resource is under Clearcase, result: "+str(result))
         return result
 
     def is_checkout(self, ccpath):
@@ -88,6 +175,8 @@ class ClearCase:
 
         """
 
+        Log.debug("Checks if resource is already checkout: " + ccpath)
+        
         result = False
 
         p = subprocess.Popen([self._config.get_cleartool_path(), "lsco",
@@ -99,6 +188,53 @@ class ClearCase:
 
             result = out[0].rstrip('\r\n') == ccpath
 
+        Log.debug("Checks if resource is already checkout, result: " +
+                  str(result))
+        
+        return result
+
+    def makelabel(self, ccpath, label):
+        """
+        Create file, and ignore errors"
+        """
+        
+        result = False
+        
+        Log.debug("Creating label (mklbtype): " + label)
+        
+        p_mklbtype = subprocess.Popen([self._config.get_cleartool_path(),
+                              "mklbtype","-nc","-pbr",label],
+                             cwd=os.path.dirname(ccpath),
+                             stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        
+        out_mklbtype = p_mklbtype.communicate()
+        
+        if p_mklbtype.returncode == 0 and out_mklbtype[0] != "":
+
+            result = out[0].rstrip('\r\n') == ccpath
+            Log.debug("Label (mklbtype) created OK: " + label)
+
+        else:
+            Log.warning("Label (mklbtype) not created: " + label)
+            
+        Log.debug("Attaching label (mklabel): " + label + " to " + ccpath)
+        
+        p_mklabel = subprocess.Popen([self._config.get_cleartool_path(),
+                                      "mklabel",label,ccpath],
+			             stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE)
+        
+        out_mklabel = p_mklabel.communicate()
+        
+        if p_mklabel.returncode == 0 and out_mklabel[0] != "":
+
+            result = out[0].rstrip('\r\n') == ccpath
+            Log.debug("Atached label " + label + " OK to " + ccpath)
+            
+        else:
+            
+            Log.warning("Error attching label (mklbtype) not created: " + label)
+            
         return result
 
     def checkout(self, ccpath, comment, addVersion=False):
@@ -110,6 +246,8 @@ class ClearCase:
 
         """
 
+        Log.debug ("checkout:" + ccpath)
+        
         # File/Folder must exists and have version in ClearCase
         if not addVersion and not self.is_versioned(ccpath):
 
@@ -119,6 +257,9 @@ class ClearCase:
         if self.is_checkout(ccpath):
 
             raise CCError(ccpath + self._("already_co"))
+
+        if self.need_merge(ccpath):
+            raise CCError(ccpath + self._("file_need_clearcase_merge"))
 
         # Add quotation marks to the comment
         cc_comment = '"' + comment + '"'
@@ -149,6 +290,7 @@ class ClearCase:
                           self._("command_failed") +
                           str(err))
 
+        
     def uncheckout(self, ccpath):
         """
         Cancels a checkout of an element.
@@ -156,6 +298,8 @@ class ClearCase:
         Raises CCError exception when the command fails.
 
         """
+
+        Log.debug("uncheckout:" + ccpath)
 
         p = subprocess.Popen([self._config.get_cleartool_path(), "unco", "-rm",
                               ccpath])
@@ -165,13 +309,67 @@ class ClearCase:
 
             raise CCError(ccpath + " ct unco -rm" + self._("command_failed"))
 
-    def checkin(self, ccpath):
+    def set_label(self, label, ccpath):
+        """
+        Sets a CC label to an element
+
+        Raises CCError exception when the command fails.
+
+        """
+
+        p = subprocess.Popen([self._config.get_cleartool_path(), "mklabel", "-replace", label, ccpath], stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        out, err = p.communicate()
+
+        if p.returncode != 0:
+
+            raise CCError(ccpath + " ct mklabel -replace " + self._("command_failed") + str(err))
+
+        else:
+
+            Log.debug ("Label : " + label + " set in " + ccpath)
+
+        
+    def exists_label(self, label, ccpath):
+        """
+        Check if a label exists
+
+        Raises CCError exception when the command fails.
+        """
+        result = False
+
+        prevdir = os.getcwd()
+
+        parent = os.path.dirname(ccpath)
+
+        os.chdir(parent)
+
+        try:
+            p = subprocess.Popen([self._config.get_cleartool_path(), "lstype",
+                              "lbtype:" + label],
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE)
+            out, err = p.communicate()
+
+        except:
+            Log.error (ccpath + self._("exists_label_failed") + str(sys.exc_info()))
+            
+        os.chdir (prevdir)
+
+        if p.returncode == 0 and out[1] != "Error:":
+
+            result = True
+
+        return result
+
+    def checkin(self, ccpath, labels=[]):
         """
         Executes the check in of the given file or directory
 
         Raises CCError exception when the command fails.
 
         """
+
+        Log.debug("checkin:" + ccpath)
 
         if not os.path.exists(ccpath):
 
@@ -182,6 +380,7 @@ class ClearCase:
             raise CCError(ccpath + self._("ci_not_co"))
 
         try:
+            
             p = subprocess.Popen([self._config.get_cleartool_path(),
                                   "ci", "-nc", ccpath],
                                  stdout=subprocess.PIPE,
@@ -200,6 +399,10 @@ class ClearCase:
             raise CCError(self._("ci") + " " + ccpath +
                           self._("command_failed") +
                           str(sys.exc_info()))
+        else:
+
+            Log.debug("checkin OK: " + ccpath)
+            self.create_and_set_labels (ccpath, labels);
 
     def create_dir(self, ccpath):
         """
@@ -208,6 +411,8 @@ class ClearCase:
         Raises CCError exception when the command fails.
 
         """
+
+        Log.debug("create_dir:"+ccpath)
 
         if not os.path.isdir(ccpath):
 
@@ -225,28 +430,36 @@ class ClearCase:
 
                 raise CCError(parent + self._("not_in_CC"))
 
-            if not self.is_checkout(parent):
-                # Check out parent directory
-                self.checkout(parent, self._("CC_dir_modification_comment"))
+            # Only create dir if not versioned in CC
+            if not self.is_versioned(ccpath):
+                
+                if not self.is_checkout(parent):
+                    # Check out parent directory
+                    self.checkout(parent, self._("CC_dir_modification_comment"))
 
-            try:
+                try:
 
-                # Create new directory
-                p = subprocess.Popen([self._config.get_cleartool_path(),
-                                      "mkdir", "-c", self._("new_CC_folder"),
-                                      ccpath],
-                                     stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE)
-                out, err = p.communicate()
+                    # Create new directory
+                    p = subprocess.Popen([self._config.get_cleartool_path(),
+                                          "mkdir", "-c",
+                                          self._("new_CC_folder"),
+                                          ccpath],
+                                         stdout=subprocess.PIPE,
+                                         stderr=subprocess.PIPE)
+                    out, err = p.communicate()
+                    
+                    self.checkin(parent)
+                    
+                    self.checkin(ccpath)
+                    
+                except:
+                    
+                    raise CCError(ccpath + self._("creation_failed") +
+                                  str(sys.exc_info()))
 
-            except:
+                if p.returncode != 0:
 
-                raise CCError(ccpath + self._("creation_failed") +
-                              str(sys.exc_info()))
-
-            if p.returncode != 0:
-
-                raise CCError(ccpath + self._("creation_failed") + str(err))
+                    raise CCError(ccpath + self._("creation_failed") + str(err))
 
         else:
 
@@ -259,6 +472,8 @@ class ClearCase:
         Raises CCError exception when the creation of any directory fails.
 
         """
+
+        Log.debug("Creating new path:" + ccpath)
 
         # Split path in directories
         dirs = ccpath.split(os.sep)
@@ -286,7 +501,7 @@ class ClearCase:
 
             current += os.sep
 
-    def create_file(self, ccpath):
+    def create_file(self, ccpath, labels, list_co):
         """
         Adds a new file to ClearCase. The file must exists previously.
 
@@ -294,23 +509,33 @@ class ClearCase:
 
         """
 
+        Log.debug("Creating new file: " + ccpath)
+
         if not os.path.isfile(ccpath):
 
             raise CCError(ccpath + self._("file_not_exists"))
 
-        # Preserve current keep file if it exists
-        if os.path.isfile(ccpath + ".keep"):
-            os.rename(ccpath + ".keep", ccpath + ".keep.old")
+        # Preserve current keep file if it exists (NOT NEEDED CC does it)
+        #if os.path.isfile(ccpath + ".keep"):
+        #    os.rename(ccpath + ".keep", ccpath + ".keep.old")
 
         try:
 
             # Checkout file folder
-            self.checkout(os.path.dirname(ccpath), self._("new_file"))
+            parent_folder = os.path.dirname(ccpath)
 
+            if not self.is_checkout (parent_folder):
+                # Checkout file folder
+                Log.debug("Chekout parent folder: " + parent_folder)
+                self.checkout(os.path.dirname(ccpath), self._("new_file"))
+                Log.debug("Chekout parent folder OK: " + parent_folder)
+                list_co.append (os.path.dirname (ccpath))
+                
             # Open the file avoids anyone changes it during the check out
             with open(ccpath) as f:
                 p = subprocess.Popen([self._config.get_cleartool_path(),
                                       "mkelem", "-nc", "-nco", ccpath],
+                                     #cwd=os.path.dirname(ccpath)
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.PIPE)
                 out, err = p.communicate()
@@ -325,7 +550,7 @@ class ClearCase:
                 self.checkout(ccpath + "@@/main/LATEST",
                               self._("new_file"), True)
                 os.rename(ccpath + ".keep", ccpath)
-                self.checkin(ccpath)
+                self.checkin(ccpath, labels)
             else:
                 raise CCError(ccpath + self._("creation_failed") + str(err))
 
@@ -340,25 +565,63 @@ class ClearCase:
             raise CCError(ccpath + self._("creation_failed") +
                           str(sys.exc_info()))
 
-    def list_checkouts(self):
+    def list_checkouts_in_all_vobs(self):
+        """
+        List checkouts in all the configured vobs.
+        """
+        colist_in_vobs = []
+
+        vobs = self._config.get_vobs()
+        
+        vobs_to_string = " ".join(str(x) for x in vobs)
+
+        Log.debug("list_checkouts in all vobs : " + vobs_to_string)
+
+        if not vobs:
+
+            colist_in_vobs = self.list_checkouts("")
+            
+        else:
+            
+            for vob in vobs:
+                colist_in_vobs.extend (self.list_checkouts(vob))
+
+        list_of_checkouts = " ".join(str(x) for x in colist_in_vobs)
+        
+        Log.debug("Final list_checkout in all vobs : " + vobs_to_string +
+                     " list of checkouts : " + list_of_checkouts)
+        
+        return colist_in_vobs
+
+    
+    def list_checkouts(self, vob):
         """
         Lists every file and folder checked out in the current view.
 
         """
+        Log.debug("list_checkouts in vob : " + vob)
 
         colist = []
 
-        for i in os.listdir(self._config.get_view()):
+        vob_path = self._config.get_view() + os.sep + vob
 
-            current_path = self._config.get_view() + os.sep + i
+        # list files in each vob.
+        for i in os.listdir(vob_path):
 
+            current_path = vob_path + os.sep + i
+
+            Log.debug("Path to search checkouts : " + current_path)
+            
             if os.path.isdir(current_path) and self.is_versioned(current_path):
 
                 # Check if current path is checked out
+                Log.debug("Path is checkout:"+ str
+                             (self.is_checkout(current_path)))
+                
                 if self.is_checkout(current_path):
-
                     colist.append(current_path)
-
+                    
+                    
                 try:
                     # Get all checked out children (file/folder)of current path
                     p = subprocess.Popen([self._config.get_cleartool_path(),
@@ -367,59 +630,65 @@ class ClearCase:
                                          stdout=subprocess.PIPE,
                                          stderr=subprocess.PIPE)
                     out, err = p.communicate()
-
+                    
                 except:
-
+                    
                     raise CCError("ct lsco -s -r -cvi " +
-                                  self._config.get_view() +
+                                  current_path +
                                   self._("command_failed") +
                                   str(sys.exc_info()))
-
+                
                 if p.returncode == 0:
-
+                    
                     if not (out is None or out == ""):
-
+                    
                         colist.extend(out.splitlines())
-
+                        
                 else:
-
+                    
                     raise CCError("ct lsco -s -r -cvi " +
-                                  self._config.get_view() +
-                                  self._("command_failed") + str(err))
-
+                                  current_path +
+                                  self._("command_failed 2") + str(err))
+                    
         # Reverse check out list to get directories' children files and folders
         # first
         colist.reverse()
-
+        Log.debug("checkouts in vobs " + vob + " : " + ' '.join(colist))
+        
         return colist
-
-    def checkin_all(self):
+                
+    def checkin_all(self, labels):
         """
         Checks in every file and folder found checked out in the view.
 
         """
 
-        colist = self.list_checkouts()
+        Log.debug("checkin_all")
+
+        colist = []
+
+        colist = self.list_checkouts_in_all_vobs()
 
         for co in colist:
 
             try:
 
-                self.checkin(co)
+                Log.debug("Checkin of: "+co)
+                self.checkin(co, labels)
 
             except (CCError) as e:
-                # print warning and continue executing check in
-                print("{0} {1}".format(self._("WARNING"),
+                # Log.error warning and continue executing check in
+                Log.error("{0} {1}".format(self._("WARNING"),
                                        co + self._("impossible_ci")))
-                print(e)
+                Log.error(e)
                 continue
 
             except:
-                # print warning and continue executing check in
-                print("{0} {1}".format(self._("WARNING"),
+                # Log.error warning and continue executing check in
+                Log.error("{0} {1}".format(self._("WARNING"),
                                        co + self._("impossible_ci")))
                 e = sys.exc_info()
-                print(e)
+                Log.error(e)
                 continue
 
     def uncheckout_all(self):
@@ -429,28 +698,35 @@ class ClearCase:
 
         """
 
-        colist = self.list_checkouts()
+        Log.debug("uncheckout_all")
+
+        colist = []
+        
+        colist = self.list_checkouts_in_all_vobs()
 
         for co in colist:
 
             try:
 
+                Log.debug("uncheckout file: " + co)
                 self.uncheckout(co)
+                Log.debug("uncheckout file OK: " + co)
 
             except (CCError) as e:
-                # print warning and continue executing check outs
-                print("{0} {1}".format(self._("WARNING"),
+                # Log.error warning and continue executing check outs
+                Log.error("{0} {1}".format(self._("WARNING"),
                                        co + self._("impossible_unco")))
-                print(e)
+
+                e = sys.exc_info()
+                Log.error(e)
                 continue
 
             except:
 
-                # print warning and continue executing check outs
-                print("{0} {1}".format(self._("WARNING"),
-                                       co + self._("impossible_unco")))
+                Log.error ("{0} {1}".format(self._("WARNING"),
+                                            co + self._("impossible_unco")))
                 e = sys.exc_info()
-                print(e)
+                Log.error (e)
                 continue
 
             # Delete folders not versioned and empty
@@ -459,19 +735,22 @@ class ClearCase:
                     not self.is_versioned(co)):
                 os.rmdir(co)
 
-    def remove_name(self, ccpath):
+    def remove_name(self, ccpath, colist):
         """
         Removes one file or folder from ClearCase.
 
         """
 
+        Log.debug("remove_name:"+ccpath)
+
         # Parent dir must be checked out
         parent = os.path.dirname(ccpath)
 
         if not self.is_checkout(parent):
-
+            
             self.checkout(parent, self._("CC_dir_modification_comment"))
-
+            colist.append (parent)
+            
         # Folders must be checked in before being deleted.
         if os.path.isdir(ccpath) and self.is_checkout(ccpath):
 
@@ -494,3 +773,78 @@ class ClearCase:
 
             raise CCError("ct rmname " + ccpath + self._("command_failed") +
                           str(err))
+
+    def create_label(self, label, ccpath):
+        """
+        Creates a new CC label.
+
+        Raises CCError exception when the command fails or the label already 
+        exists.
+
+        """
+        if not self.exists_label (label, ccpath):
+
+            p = subprocess.Popen([self._config.get_cleartool_path(), "mklbtype", "-nc", "-pbr", label],cwd=os.path.dirname(ccpath),
+            stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            out, err = p.communicate()
+
+            if p.returncode != 0 and out[0] != "":
+
+                Log.error (out)
+                
+                raise CCError(ccpath + " ct mklbtype -nc -pbr" + self._("command_failed") + str(err))
+            
+            else:
+
+                Log.debug (out)
+
+        else:
+
+            Log.debug ("CC Label " + label + "Already created")
+            
+    def create_and_set_labels(self, ccpath, labels):
+        """
+        Creates new CC labels.
+
+        Raises CCError exception when the command fails or the label already 
+        exists.
+
+        """
+        for label in labels:
+
+            try :
+                
+                if not self.exists_label (label, ccpath):
+                    self.create_label (label, ccpath)
+
+                self.set_label (label, ccpath)
+                
+            except:
+                # Log.error warning and continue executing check in
+                Log.error("{0} {1}".format(self._("WARNING"),
+                                    label + self._("impossible_label")))
+                e = sys.exc_info()
+                Log.error(e)
+                continue
+
+    def checkin_list(self, co_list, labels=[]):
+        """
+        Creates new CC labels.
+
+        Raises CCError exception when the command fails or the label already 
+        exists.
+
+        """
+        # Checkout dirs are check-in.
+        #
+        if co_list:
+
+            Log.debug("checkin checkout dir in delete")
+        
+            for co_dir in co_list:
+                self.checkin (co_dir)
+
+        else:
+
+            Log.debug("No files to checkin")
+            

@@ -11,6 +11,8 @@ excecution of a push operation takes effect.
 import os
 import sys
 import traceback
+import re
+import Log
 
 from ClearCase import CCError
 from ClearCase import ClearCase
@@ -18,7 +20,6 @@ from GIT import GIT
 from GIT import GITError
 from HooksConfig import ConfigException
 from HooksConfig import HooksConfig
-
 
 def add_file(ccpath):
     """
@@ -37,15 +38,26 @@ def modify_file(ccpath, committer, comments):
 
     """
 
+    cc = ClearCase()
     co_comment = committer + ".GIT push:" + os.linesep
+    make_label = False
 
     for comment in comments:
 
-        co_comment += comment + os.linesep
+        m = re.search('@[A-Z_0-9]*',comment)
+        if m is not None:
+          label = m.group(0)[1:]
+          Log.debug("Label found: " + label)
+          make_label = True
+          co_comment += re.sub('@[A-Z_0-9]*',"",comment) + os.linesep
+        else:
+          co_comment += comment + os.linesep
 
-    cc = ClearCase()
+    Log.debug ("Making checkout FILE : " + ccpath + "  COMMENT:" + co_comment);
+
     cc.checkout(ccpath, co_comment)
-
+    if make_label:
+          cc.makelabel(ccpath, label)
 
 def process_deletions(cc_view_path, old_revision, new_revision):
     """
@@ -57,7 +69,8 @@ def process_deletions(cc_view_path, old_revision, new_revision):
     git = GIT()
     cc = ClearCase()
     deletion_list = git.list_deletions(old_revision, new_revision)
-
+    co_list = []
+    
     for deletion in deletion_list:
 
         """
@@ -75,8 +88,11 @@ def process_deletions(cc_view_path, old_revision, new_revision):
 
         if os.path.exists(dpath):
 
-            cc.remove_name(dpath)
+            cc.remove_name(dpath, co_list)
 
+    # Checkout dirs for delete files are check-in.
+    #
+    cc.checkin_list (co_list)
 
 def process_push(committer, comments, file_status_list, old_revision,
                  new_revision):
@@ -86,6 +102,18 @@ def process_push(committer, comments, file_status_list, old_revision,
 
     """
 
+    Log.debug("Processing push...")
+    Log.debug("committer: " + committer)
+    comments_str = '\n'.join(str(c) for c in comments)
+    Log.debug("comments: " + comments_str)
+    Log.info("Files received to synchronise with ClearCase: ")
+    Log.info ("============================================")
+    #[<File status>, <Path to file>]
+    #M       icas/ccm/configurations/fdp/dep_evatool_fdp.xml
+    #D       icas/ccm/load_balancer/Makefile
+    for file_status in file_status_list:
+        Log.info("  " + file_status[0] + "  " + file_status[1])
+    Log.info ("============================================")
     delete_mark = False
 
     # Path to ClearCase view
@@ -128,7 +156,7 @@ def process_push(committer, comments, file_status_list, old_revision,
             else:
 
                 efile = cc_view_path + git_file[1]
-                print("{0} {1} {2}".format(_("update_hook_error"),
+                Log.error ("{0} {1} {2}".format(_("update_hook_error"),
                                            _("filestatus_not_supported"),
                                            efile))
                 sys.exit(1)
@@ -136,7 +164,7 @@ def process_push(committer, comments, file_status_list, old_revision,
         else:
 
             ignored_path = cc_view_path + git_file[1]
-            print("{0} : {1} {2}".format(_("NOTICE"),
+            Log.error ("{0} : {1} {2}".format(_("NOTICE"),
                                          ignored_path,
                                          _("avoided_file")))
 
@@ -160,7 +188,9 @@ def do_sync(old_revision, new_revision, git, cc_pusher_user):
     if not git.isNullRevision(old_revision) and new_revision is not None:
 
         committer = git.get_committer(new_revision)
-
+        if (committer == cc_pusher_user):
+            Log.debug ("Commiter is the Clearcase pusher: " + cc_pusher_user + ", no sync is done, it is a push from Clearcase")
+            
         sync = committer != cc_pusher_user
 
     return sync
@@ -172,12 +202,19 @@ def main():
     before GIT updates any reference.
 
     """
-
     # Get args
     # hook_script = sys.argv[0]
     refs = sys.argv[1]
     old_revision = sys.argv[2]
     new_revision = sys.argv[3] if len(sys.argv) > 3 else None
+
+    Log.debug ("=====================")
+    Log.debug ("START NEW PUSH/UPDATE")
+    Log.debug ("=====================")
+    Log.debug ("refs: " + refs)
+    Log.debug ("old_revision: " + old_revision)
+    Log.debug ("new_revision: " + new_revision)
+    Log.debug ("=====================")
 
     try:
 
@@ -187,7 +224,7 @@ def main():
 
     except (ConfigException) as e:
 
-        print("{0} {1}".format(_("update_hook_error"), e.value))
+        Log.error("{0} {1}".format(_("update_hook_error"), e.value))
         sys.exit(1)
 
     """
@@ -200,8 +237,9 @@ def main():
 
     if refs[1] == "heads" and refs[2] in config.get_sync_branches():
 
-        print("{0}".format(_("branch_sync") + refs[2]))
-
+        Log.info("{0}".format(_("branch_sync") + refs[2]))
+        Log.debug("This git branch '" + refs[2] +
+                  "' is configured as a synchronized Clearcase branch");
         try:
 
             git = GIT()
@@ -218,12 +256,12 @@ def main():
 
         except (GITError, ConfigException) as e:
 
-            print("{0} {1}".format(_("update_hook_error"), e.value))
+            Log.error("{0} {1}".format(_("update_hook_error"), e.value))
             sys.exit(1)
 
         except:
 
-            print("{0} {1}".format(_("update_hook_unexpected_error"),
+            Log.error("{0} {1}".format(_("update_hook_unexpected_error"),
                                    sys.exc_info()))
             sys.exit(1)
 
@@ -236,7 +274,7 @@ def main():
 
             except (CCError, ConfigException) as e:
 
-                print("{0} {1}".format(_("update_hook_error"), e.value))
+                Log.error("{0} {1}".format(_("update_hook_error"), e.value))
 
                 # Try to recover previous state
                 cc = ClearCase()
@@ -246,7 +284,7 @@ def main():
 
             except:
 
-                print("{0} {1}".format(_("update_hook_unexpected_error"),
+                Log.error("{0} {1}".format(_("update_hook_unexpected_error"),
                                        traceback.format_exc()))
 
                 # Try to recover previous state
@@ -258,9 +296,12 @@ def main():
     else:
 
         if refs[1] == "heads":
+            Log.debug("This git branch '" + refs[2] + "' is not configured as a synchronized Clearcase branch");
+            Log.error("{0}".format(_("branch_not_sync") + refs[2]))
 
-            print("{0}".format(_("branch_not_sync") + refs[2]))
-
+    Log.debug ("=====================")
+    Log.debug ("END NEW PUSH/UPDATE")
+    Log.debug ("=====================")
 
 if __name__ == "__main__":
 

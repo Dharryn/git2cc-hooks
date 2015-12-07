@@ -11,6 +11,7 @@ execution of a push operation takes effect.
 import os
 import sys
 import traceback
+import Log
 
 from ClearCase import CCError
 from ClearCase import ClearCase
@@ -18,36 +19,55 @@ from GIT import GIT
 from GIT import GITError
 from HooksConfig import ConfigException
 from HooksConfig import HooksConfig
-def add_file(ccpath):
+
+
+def add_file(ccpath, labels, list_co):
     """
     Adds one file to ClearCase view.
 
     """
 
     cc = ClearCase()
-    cc.create_file(ccpath)
+
+    cc.create_file(ccpath, labels, list_co)
 
 
-def modify_file(ccpath):
+def checkin_file(ccpath, labels):
     """
     Checks in one file in the ClearCase view.
 
     """
 
     cc = ClearCase()
-    cc.checkin(ccpath)
+    cc.checkin(ccpath, labels)
 
 
-def checkin_all():
+def checkin_all(cc_view_path):
     """
     Checks in every file and folder found checked out in the view.
 
     """
-
+    git = GIT()
+    labels = git.last_commit_labels(cc_view_path)
     cc = ClearCase()
-    cc.checkin_all()
+    cc.checkin_all(labels)
 
+def log_received_files_and_labels (labels, file_status_list):
+    """
+    This procedure will log using the log package all the received files and
+    labels.
 
+    """
+    list_of_files = '\n'.join(str(p) for p in file_status_list)
+    
+    Log.debug ("Post-receive hook Received Git Files")
+    Log.debug ("====================================")
+    Log.debug (list_of_files)
+    
+    Log.debug ("Labels received to synchronise with ClearCase")
+    Log.debug ("============================================")
+    Log.debug (labels)
+    
 def process_push(cc_view_path, file_status_list):
     """
     This procedure executes the right ClearCase operation for every file in the
@@ -56,8 +76,16 @@ def process_push(cc_view_path, file_status_list):
     """
 
     # Load user messages
-    _ = HooksConfig.get_translations()
+    HooksConfig.get_translations()
 
+    git = GIT()
+    
+    labels = git.last_commit_labels(cc_view_path)
+
+    list_co = []
+    
+    log_received_files_and_labels (labels, file_status_list)
+    
     for git_file in file_status_list:
 
         if git_file[1] != ".gitignore":
@@ -69,15 +97,18 @@ def process_push(cc_view_path, file_status_list):
 
             if git_file[0] == 'A':
 
-                add_file(cc_view_path + git_file[1])
+                add_file(cc_view_path + git_file[1], labels, list_co)
 
             elif git_file[0] == 'M':
 
-                modify_file(cc_view_path + git_file[1])
+                checkin_file(cc_view_path + git_file[1], labels)
 
             # Deleted files do not need post_receive operations.
 
-
+    # Checkout dirs needed to Add files checked-in.
+    cc = ClearCase()
+    cc.checkin_list (list_co, labels)
+    
 def do_sync(old_revision, new_revision, git, config, refs):
     """
     Checks conditions to do a Clearcase sync:
@@ -131,7 +162,9 @@ def main():
     references.
 
     """
-
+    Log.debug ("START POST-RECEIVE")
+    Log.debug ("==================")
+    
     # Load user messages
     _ = HooksConfig.get_translations()
 
@@ -151,12 +184,14 @@ def main():
         refs = refs.split('/')
 
     except (GITError, ConfigException) as e:
-        print("{0} {1}".format(_("post-receive hook error:"), e.value))
+        Log.error("{0} {1}".format(_("post-receive hook error:"), e.value))
+        Log.error("Please review checkout files!!!!")
         sys.exit(1)
 
     except:
-        print("{0} {1}".format(_("post-receive hook unexpected error:"),
+        Log.error("{0} {1}".format(_("post-receive hook unexpected error:"),
                                sys.exc_info()))
+        Log.error("Please review checkout files!!!!")
         sys.exit(1)
 
     if do_sync(old_revision, new_revision, git, config, refs):
@@ -167,24 +202,29 @@ def main():
             cc_view_path = config.get_view() + os.sep
 
             # Update ClearCase view and recover file status list using GIT
+            Log.debug("git pull from " + cc_view_path + "...")
             git.pull(cc_view_path)
+            Log.debug("git pull from " + cc_view_path + "...OK")
             file_status_list = git.get_commit_files(old_revision, new_revision)
 
             # Process every file
             process_push(cc_view_path, file_status_list)
 
             # Check in every remaining check out
-            checkin_all()
+            #checkin_all (cc_view_path)
 
         except (GITError, CCError, ConfigException) as e:
-            print("{0} {1}".format(_("post-receive hook error:"), e.value))
+            Log.error("{0} {1}".format(_("post-receive hook error:"), e.value))
+            Log.error("Please review checkout files!!!!")
             sys.exit(1)
 
         except:
-            print("{0} {1}".format(_("post-receive hook unexpected error:"),
-                                   traceback.format_exc()))
+            Log.error("{0} {1}".format(_("post-receive hook unexpected error:"),
+                                   traceback.format_exc(), sys.exc_info()[0]))
+            Log.error("Please review checkout files!!!!")
             sys.exit(1)
 
+    Log.debug ("END POST-RECEIVE")
 
 if __name__ == "__main__":
 
